@@ -52,3 +52,6 @@ server/**/*.db
 
 # Work notes (exclude top-level .txt files)
 /*.txt
+
+# VS Code workspace (local dev only)
+*.code-workspace
