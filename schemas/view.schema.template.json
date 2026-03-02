@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "id": "example-view",
+  "title": "汎用ビューテンプレート",
+  "list": {
+    "columns": [
+      {"label": "氏名", "kintoneField": "name"},
+      {"label": "メール", "kintoneField": "email", "mask": "partial"}
+    ],
+    "sort": [{"field": "更新日時", "kintoneField": "updated_at", "order": "desc"}],
+    "filters": [{"field": "status", "kintoneField": "status", "equals": "open"}],
+    "export": {"enabled": true, "format": "csv"}
+  },
+  "detail": {
+    "sections": [
+      {"title": "基本情報", "fields": ["name", "email", "note", "attachment"]}
+    ]
+  }
+}

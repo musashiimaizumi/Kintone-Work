@@ -1,0 +1,19 @@
+[Unit]
+Description=Kintone Generic Bridge (Zero Retention)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/Kintone-Work/server
+# .envでZERO_RETENTION/MEMORY_ONLY_PIPELINEを設定（dotenvが読み込み）
+ExecStart=/usr/bin/node src/app.js
+Restart=always
+User=www-data
+Group=www-data
+Environment=NODE_ENV=production
+# 必要に応じて環境変数を直指定（.env利用が基本）
+# Environment=ZERO_RETENTION=true
+# Environment=MEMORY_ONLY_PIPELINE=true
+
+[Install]
+WantedBy=multi-user.target

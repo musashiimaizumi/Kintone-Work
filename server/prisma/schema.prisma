@@ -1,0 +1,67 @@
+// Prisma schema for MariaDB (MySQL provider)
+// ZERO_RETENTION: only metadata; no PII columns.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id    String  @id @db.VarChar(64)
+  name  String  @db.VarChar(255)
+  apps  App[]
+}
+
+model App {
+  id             String  @id @db.VarChar(64)
+  tenantId       String  @db.VarChar(64)
+  tenant         Tenant  @relation(fields: [tenantId], references: [id])
+  kintoneDomain  String  @db.VarChar(255)
+  appCode        String  @db.VarChar(64) // internal app identifier
+  authType       String  @db.VarChar(32)
+  apiTokenEnc    String? @db.VarChar(512)
+  oauthClientRef String? @db.VarChar(255)
+  schemas        Schema[]
+}
+
+model Schema {
+  id       String  @id @db.VarChar(64)
+  tenantId String  @db.VarChar(64)
+  appId    String  @db.VarChar(64)
+  type     String  @db.VarChar(16) // form|view
+  json     Json
+  version  Int
+  app      App     @relation(fields: [appId], references: [id])
+}
+
+model Token {
+  hash       String  @id @db.VarChar(128)
+  tenantId   String  @db.VarChar(64)
+  appId      String  @db.VarChar(64)
+  recordRef  String? @db.VarChar(128)
+  scope      String  @db.VarChar(16) // view|edit
+  expiry     DateTime
+}
+
+model AuditLog {
+  id                     BigInt   @id @default(autoincrement())
+  tenantId               String   @db.VarChar(64)
+  appId                  String   @db.VarChar(64)
+  actor                  String?  @db.VarChar(128)
+  action                 String   @db.VarChar(32) // create|update|view|list|export
+  targetRecordRef        String?  @db.VarChar(128)
+  timestamp              DateTime @default(now())
+  result                 String   @db.VarChar(16) // success|fail
+  prevHash               String?  @db.VarChar(128)
+  clientIp               String?  @db.VarChar(64)
+  userAgent              String?  @db.VarChar(255)
+  tokenHashRef           String?  @db.VarChar(128)
+  kintoneRecordId        String?  @db.VarChar(64)
+  kintoneRevision        String?  @db.VarChar(32)
+  errorStatusCode        Int?
+  errorMessageSanitized  String?  @db.VarChar(255)
+}

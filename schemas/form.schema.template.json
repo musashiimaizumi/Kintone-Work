@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "id": "example-form",
+  "title": "汎用フォームテンプレート",
+  "kintone": {
+    "domain": "your-subdomain.cybozu.com",
+    "appId": 123,
+    "tokenField": "token",
+    "tokenExpiryField": "token_expiry"
+  },
+  "fields": [
+    {"id": "name", "label": "氏名", "type": "text", "required": true, "kintoneField": "name", "validation": {"maxLength": 100}},
+    {"id": "email", "label": "メール", "type": "email", "required": true, "kintoneField": "email"},
+    {"id": "note", "label": "備考", "type": "textarea", "required": false, "kintoneField": "note"},
+    {"id": "attachment", "label": "添付", "type": "file", "required": false, "kintoneField": "attachment"}
+  ],
+  "visibility": [
+    {"when": {"field": "has_option", "equals": true}, "show": ["optional_section"]}
+  ],
+  "csrfProtection": true,
+  "submit": {
+    "mode": "zero-retention",
+    "retry": {"enabled": true, "maxAttempts": 3, "ttlHours": 24}
+  }
+}

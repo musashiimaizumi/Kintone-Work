@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>管理UI - 汎用Kintone連携サーバ</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 2rem; }
+    form { border: 1px solid #ddd; padding: 1rem; margin-bottom: 2rem; }
+    input, select, textarea { width: 100%; padding: .5rem; margin: .25rem 0; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .muted { color: #666; font-size: .9rem; }
+    .ok { color: #0a0; }
+    .err { color: #a00; }
+    table { width:100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ddd; padding: .5rem; }
+  </style>
+</head>
+<body>
+  <h1>管理UI</h1>
+  <p class="muted">CUI不要でテナント/アプリ/スキーマ/トークンを登録できます。API呼び出しはこのページから実行されます。</p>
+
+  <section>
+    <h2>テナント作成</h2>
+    <form id="tenantForm">
+      <label>テナント名</label>
+      <input name="name" required />
+      <button type="submit">作成</button>
+      <div id="tenantMsg" class="muted"></div>
+    </form>
+  </section>
+
+  <section>
+    <h2>アプリ登録</h2>
+    <form id="appForm">
+      <label>テナントID</label>
+      <input name="tenant" required />
+      <label>Kintoneドメイン</label>
+      <input name="kintone_domain" required placeholder="your-subdomain.kintone.com" />
+      <label>KintoneアプリID（または内部コード）</label>
+      <input name="app_code" required placeholder="1234 もしくは app_001" />
+      <div class="row">
+        <div>
+          <label>認証方式</label>
+          <select name="auth_type">
+            <option value="api_token">APIトークン</option>
+            <option value="oauth">OAuth</option>
+          </select>
+        </div>
+        <div>
+          <label>APIトークン（暗号化保存）</label>
+          <input name="api_token" placeholder="必要に応じて入力" />
+        </div>
+      </div>
+      <button type="submit">登録</button>
+      <div id="appMsg" class="muted"></div>
+    </form>
+  </section>
+
+  <section>
+    <h2>スキーマ登録</h2>
+    <form id="schemaForm">
+      <label>テナントID</label>
+      <input name="tenant" required />
+      <label>アプリID（登録応答の app_id）</label>
+      <input name="app_id" required />
+      <label>タイプ</label>
+      <select name="type">
+        <option value="form">form</option>
+        <option value="view">view</option>
+      </select>
+      <label>JSON</label>
+      <textarea name="json" rows="6" placeholder='{"version":1, ...}' required></textarea>
+      <button type="submit">登録</button>
+      <div id="schemaMsg" class="muted"></div>
+    </form>
+  </section>
+
+  <section>
+    <h2>トークン発行</h2>
+    <form id="tokenForm">
+      <label>テナントID</label>
+      <input name="tenant" required />
+      <label>アプリID</label>
+      <input name="app" required />
+      <div class="row">
+        <div>
+          <label>スコープ</label>
+          <select name="scope">
+            <option value="view">view</option>
+            <option value="edit">edit</option>
+          </select>
+        </div>
+        <div>
+          <label>期限（分）</label>
+          <input name="expiry_minutes" type="number" min="1" max="1440" value="30" required />
+        </div>
+      </div>
+      <label>レコード参照（任意）</label>
+      <input name="record_ref" />
+      <button type="submit">発行</button>
+      <div id="tokenMsg" class="muted"></div>
+    </form>
+  </section>
+
+  <section>
+    <h2>登録済みアプリ（簡易一覧）</h2>
+    <div class="row">
+      <input id="appsTenant" placeholder="テナントID" />
+      <button id="loadApps">読み込み</button>
+    </div>
+    <div id="appsTable"></div>
+  </section>
+
+<script>
+async function post(url, body) {
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'request failed');
+  return data;
+}
+
+const tenantForm = document.getElementById('tenantForm');
+tenantForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(tenantForm);
+  const body = { name: fd.get('name') };
+  try {
+    const r = await post('/admin/tenants', body);
+    document.getElementById('tenantMsg').innerHTML = `<span class="ok">作成成功: ${r.tenant_id}</span>`;
+  } catch (err) {
+    document.getElementById('tenantMsg').innerHTML = `<span class="err">${err.message}</span>`;
+  }
+});
+
+const appForm = document.getElementById('appForm');
+appForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(appForm);
+  const tenant = fd.get('tenant');
+  const body = {
+    kintone_domain: fd.get('kintone_domain'),
+    app_code: fd.get('app_code'),
+    auth_type: fd.get('auth_type'),
+    api_token_enc: fd.get('api_token') || undefined,
+  };
+  try {
+    const r = await post(`/admin/tenants/${tenant}/apps`, body);
+    document.getElementById('appMsg').innerHTML = `<span class="ok">登録成功: ${r.app_id}</span>`;
+  } catch (err) {
+    document.getElementById('appMsg').innerHTML = `<span class="err">${err.message}</span>`;
+  }
+});
+
+const schemaForm = document.getElementById('schemaForm');
+schemaForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(schemaForm);
+  const tenant = fd.get('tenant');
+  const app_id = fd.get('app_id');
+  const type = fd.get('type');
+  let json;
+  try { json = JSON.parse(fd.get('json')); } catch (e2) { document.getElementById('schemaMsg').innerHTML = `<span class="err">JSON不正</span>`; return; }
+  try {
+    const url = type === 'form' ? `/admin/tenants/${tenant}/schemas/forms` : `/admin/tenants/${tenant}/schemas/views`;
+    const r = await post(url, { app_id, json });
+    document.getElementById('schemaMsg').innerHTML = `<span class="ok">登録成功: ${r.schema_id}</span>`;
+  } catch (err) {
+    document.getElementById('schemaMsg').innerHTML = `<span class="err">${err.message}</span>`;
+  }
+});
+
+const tokenForm = document.getElementById('tokenForm');
+tokenForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(tokenForm);
+  const tenant = fd.get('tenant');
+  const app = fd.get('app');
+  const body = {
+    scope: fd.get('scope'),
+    expiry_minutes: Number(fd.get('expiry_minutes')),
+    record_ref: fd.get('record_ref') || undefined,
+  };
+  try {
+    const r = await post(`/admin/tenants/${tenant}/apps/${app}/tokens`, body);
+    document.getElementById('tokenMsg').innerHTML = `<span class="ok">発行成功: token=${r.token}</span>`;
+  } catch (err) {
+    document.getElementById('tokenMsg').innerHTML = `<span class="err">${err.message}</span>`;
+  }
+});
+
+// 簡易一覧（APIが未提供のためダミー表示）
+document.getElementById('loadApps').addEventListener('click', async () => {
+  const tenant = document.getElementById('appsTenant').value.trim();
+  if (!tenant) { document.getElementById('appsTable').innerHTML = '<p class="err">テナントIDを入力してください</p>'; return; }
+  try {
+    const res = await fetch(`/admin/tenants/${tenant}/apps`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'request failed');
+    const rows = data.items.map(a => `<tr><td>${a.id}</td><td>${a.kintone_domain}</td><td>${a.app_code}</td><td>${a.auth_type}</td><td>${a.api_token_masked || ''}</td></tr>`).join('');
+    const table = `<table><thead><tr><th>ID</th><th>Domain</th><th>App</th><th>Auth</th><th>Token</th></tr></thead><tbody>${rows}</tbody></table>`;
+    document.getElementById('appsTable').innerHTML = table;
+  } catch (err) {
+    document.getElementById('appsTable').innerHTML = `<p class="err">${err.message}</p>`;
+  }
+});
+</script>
+</body>
+</html>

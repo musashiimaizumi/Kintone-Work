@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "tenant": {
+    "id": "default",
+    "name": "デフォルトテナント"
+  },
+  "app": {
+    "label": "サンプルアプリ",
+    "kintoneDomain": "your-subdomain.cybozu.com",
+    "appId": 123,
+    "auth": {
+      "type": "apiToken",
+      "apiTokenEncRef": "vault:kv/kintone/token-example"
+    },
+    "rateLimit": {"requestsPerMinute": 120},
+    "tokenField": "token",
+    "tokenExpiryField": "token_expiry",
+    "editableFlagField": "editable_flag"
+  },
+  "scopes": {
+    "form": ["create", "update"],
+    "viewer": ["list", "detail", "export"]
+  }
+}
