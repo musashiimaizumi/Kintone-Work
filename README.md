@@ -6,6 +6,7 @@
 - `server/`: Node.js（Express）本体、Prisma（MariaDB）、Valkey（セッション/レート制限）
 - `schemas/`: フォーム/ビュー/アプリ登録のテンプレート
 - ドキュメント: 設計/仕様/VM構築ガイド
+- 変更履歴: [CHANGELOG.md](CHANGELOG.md)
 
 ## クイックスタート（ローカル開発）
 ```bash
