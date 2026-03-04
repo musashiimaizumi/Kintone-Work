@@ -26,6 +26,8 @@ model App {
   apiTokenEnc    String? @db.VarChar(512)
   oauthClientRef String? @db.VarChar(255)
   schemas        Schema[]
+  createdByAdminId String?    @db.VarChar(64)
+  createdByAdmin   AdminUser? @relation(fields: [createdByAdminId], references: [id])
 }
 
 model Schema {
@@ -64,4 +66,24 @@ model AuditLog {
   kintoneRevision        String?  @db.VarChar(32)
   errorStatusCode        Int?
   errorMessageSanitized  String?  @db.VarChar(255)
+}
+
+model AdminUser {
+  id           String         @id @db.VarChar(64)
+  username     String         @unique @db.VarChar(64)
+  passwordHash String         @db.VarChar(255)
+  displayName  String?        @db.VarChar(255)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  sessions     AdminSession[]
+  apps         App[]
+}
+
+model AdminSession {
+  id        String    @id @db.VarChar(64)
+  userId    String    @db.VarChar(64)
+  tokenHash String    @unique @db.VarChar(128)
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  user      AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

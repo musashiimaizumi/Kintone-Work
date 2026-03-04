@@ -14,11 +14,72 @@
     .err { color: #a00; }
     table { width:100%; border-collapse: collapse; }
     th, td { border: 1px solid #ddd; padding: .5rem; }
+    .tenant-list { margin-top: 1rem; display: grid; gap: 1rem; }
+    .tenant-card { border: 1px solid #ddd; border-radius: .5rem; padding: 1rem; background: #fafafa; }
+    .tenant-card h3 { margin: 0 0 .5rem; font-size: 1.1rem; }
+    .tenant-card small { color: #666; font-weight: 400; margin-left: .5rem; }
+    .tenant-card table { margin-top: .5rem; }
+    .tenant-card a { color: #0a53c1; }
+    .danger { background: #fff3f3; border: 1px solid #d66; color: #900; border-radius: .35rem; padding: .35rem .55rem; cursor: pointer; }
   </style>
 </head>
 <body>
   <h1>管理UI</h1>
   <p class="muted">CUI不要でテナント/アプリ/スキーマ/トークンを登録できます。API呼び出しはこのページから実行されます。</p>
+
+  <section>
+    <h2>初期セットアップ（新規向け）</h2>
+    <form id="bootstrapForm">
+      <label>初期テナント名（任意）</label>
+      <input id="bootstrapTenantName" name="tenant_name" placeholder="default" />
+      <label>初期管理者ID</label>
+      <input id="bootstrapAdminUser" name="admin_username" placeholder="admin" required />
+      <label>初期管理者パスワード</label>
+      <input id="bootstrapAdminPass" name="admin_password" type="password" placeholder="12文字以上" required />
+      <label>初期管理者の表示名（任意）</label>
+      <input id="bootstrapAdminDisplay" name="admin_display_name" placeholder="組織管理者" />
+      <button type="submit">管理トークン＋テナントIDを自動生成</button>
+      <div id="bootstrapMsg" class="muted"></div>
+    </form>
+  </section>
+
+  <section>
+    <h2>管理者ログイン</h2>
+    <form id="loginForm">
+      <label>管理者ID</label>
+      <input name="username" placeholder="admin" autocomplete="username" required />
+      <label>パスワード</label>
+      <input name="password" type="password" autocomplete="current-password" required />
+      <button type="submit">ログイン</button>
+    </form>
+    <button type="button" id="logoutButton">ログアウト</button>
+    <div id="loginStatus" class="muted"></div>
+    <details>
+      <summary>レガシートークン保存（旧互換機能）</summary>
+      <form id="authForm">
+        <label>管理トークン（ADMIN_TOKEN）</label>
+        <input id="adminToken" name="admin_token" placeholder="adm_xxx..." autocomplete="off" />
+        <button type="submit">保存</button>
+        <div id="authMsg" class="muted"></div>
+      </form>
+    </details>
+  </section>
+
+  <section>
+    <h2>管理者アカウント</h2>
+    <form id="adminUserForm">
+      <label>新規管理者ID</label>
+      <input name="username" placeholder="example-admin" required />
+      <label>表示名（任意）</label>
+      <input name="display_name" placeholder="表示用ラベル" />
+      <label>初期パスワード</label>
+      <input name="password" type="password" placeholder="12文字以上" required />
+      <button type="submit">追加</button>
+      <div id="adminUserMsg" class="muted"></div>
+    </form>
+    <button type="button" id="reloadAdminUsers">管理者一覧を再読み込み</button>
+    <div id="adminUsersTable" class="muted"></div>
+  </section>
 
   <section>
     <h2>テナント作成</h2>
@@ -28,6 +89,12 @@
       <button type="submit">作成</button>
       <div id="tenantMsg" class="muted"></div>
     </form>
+  </section>
+
+  <section>
+    <h2>登録済みテナント一覧</h2>
+    <button type="button" id="loadTenants">一覧取得</button>
+    <div id="tenantsTable" class="tenant-list muted"></div>
   </section>
 
   <section>
@@ -104,106 +171,20 @@
   </section>
 
   <section>
+    <h2>登録済みアプリ一覧（全テナント）</h2>
+    <button type="button" id="loadAllApps">全件読み込み</button>
+    <div id="allAppsTable"></div>
+  </section>
+
+  <section>
     <h2>登録済みアプリ（簡易一覧）</h2>
     <div class="row">
       <input id="appsTenant" placeholder="テナントID" />
-      <button id="loadApps">読み込み</button>
+      <button type="button" id="loadApps">読み込み</button>
     </div>
     <div id="appsTable"></div>
   </section>
 
-<script>
-async function post(url, body) {
-  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'request failed');
-  return data;
-}
-
-const tenantForm = document.getElementById('tenantForm');
-tenantForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const fd = new FormData(tenantForm);
-  const body = { name: fd.get('name') };
-  try {
-    const r = await post('/admin/tenants', body);
-    document.getElementById('tenantMsg').innerHTML = `<span class="ok">作成成功: ${r.tenant_id}</span>`;
-  } catch (err) {
-    document.getElementById('tenantMsg').innerHTML = `<span class="err">${err.message}</span>`;
-  }
-});
-
-const appForm = document.getElementById('appForm');
-appForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const fd = new FormData(appForm);
-  const tenant = fd.get('tenant');
-  const body = {
-    kintone_domain: fd.get('kintone_domain'),
-    app_code: fd.get('app_code'),
-    auth_type: fd.get('auth_type'),
-    api_token_enc: fd.get('api_token') || undefined,
-  };
-  try {
-    const r = await post(`/admin/tenants/${tenant}/apps`, body);
-    document.getElementById('appMsg').innerHTML = `<span class="ok">登録成功: ${r.app_id}</span>`;
-  } catch (err) {
-    document.getElementById('appMsg').innerHTML = `<span class="err">${err.message}</span>`;
-  }
-});
-
-const schemaForm = document.getElementById('schemaForm');
-schemaForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const fd = new FormData(schemaForm);
-  const tenant = fd.get('tenant');
-  const app_id = fd.get('app_id');
-  const type = fd.get('type');
-  let json;
-  try { json = JSON.parse(fd.get('json')); } catch (e2) { document.getElementById('schemaMsg').innerHTML = `<span class="err">JSON不正</span>`; return; }
-  try {
-    const url = type === 'form' ? `/admin/tenants/${tenant}/schemas/forms` : `/admin/tenants/${tenant}/schemas/views`;
-    const r = await post(url, { app_id, json });
-    document.getElementById('schemaMsg').innerHTML = `<span class="ok">登録成功: ${r.schema_id}</span>`;
-  } catch (err) {
-    document.getElementById('schemaMsg').innerHTML = `<span class="err">${err.message}</span>`;
-  }
-});
-
-const tokenForm = document.getElementById('tokenForm');
-tokenForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const fd = new FormData(tokenForm);
-  const tenant = fd.get('tenant');
-  const app = fd.get('app');
-  const body = {
-    scope: fd.get('scope'),
-    expiry_minutes: Number(fd.get('expiry_minutes')),
-    record_ref: fd.get('record_ref') || undefined,
-  };
-  try {
-    const r = await post(`/admin/tenants/${tenant}/apps/${app}/tokens`, body);
-    document.getElementById('tokenMsg').innerHTML = `<span class="ok">発行成功: token=${r.token}</span>`;
-  } catch (err) {
-    document.getElementById('tokenMsg').innerHTML = `<span class="err">${err.message}</span>`;
-  }
-});
-
-// 簡易一覧（APIが未提供のためダミー表示）
-document.getElementById('loadApps').addEventListener('click', async () => {
-  const tenant = document.getElementById('appsTenant').value.trim();
-  if (!tenant) { document.getElementById('appsTable').innerHTML = '<p class="err">テナントIDを入力してください</p>'; return; }
-  try {
-    const res = await fetch(`/admin/tenants/${tenant}/apps`);
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'request failed');
-    const rows = data.items.map(a => `<tr><td>${a.id}</td><td>${a.kintone_domain}</td><td>${a.app_code}</td><td>${a.auth_type}</td><td>${a.api_token_masked || ''}</td></tr>`).join('');
-    const table = `<table><thead><tr><th>ID</th><th>Domain</th><th>App</th><th>Auth</th><th>Token</th></tr></thead><tbody>${rows}</tbody></table>`;
-    document.getElementById('appsTable').innerHTML = table;
-  } catch (err) {
-    document.getElementById('appsTable').innerHTML = `<p class="err">${err.message}</p>`;
-  }
-});
-</script>
+<script src="/admin/ui/admin.js"></script>
 </body>
 </html>

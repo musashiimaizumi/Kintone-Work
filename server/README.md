@@ -51,3 +51,6 @@ npm run start
 - 詳細な構築・運用手順は [server/SERVER_SETUP.md](server/SERVER_SETUP.md) を参照。
 - テーブル: `AuditLog`（Prisma）
 - 保存項目: tenantId, appId, action, result, timestamp, clientIp, userAgent, tokenHashRef, kintoneRecordId, kintoneRevision, errorStatusCode, errorMessageSanitized（本文なし）
+
+## 管理UIマニュアル
+- 管理UIの認証・操作手順は [server/ADMIN_UI_MANUAL.md](server/ADMIN_UI_MANUAL.md) を参照。

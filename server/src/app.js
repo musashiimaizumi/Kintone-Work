@@ -25,12 +25,18 @@ const limiter = rateLimit({ windowMs: 60 * 1000, max: 120 });
 app.use(limiter);
 
 const admin = require('./routes/admin');
-app.use('/admin/ui', express.static(require('path').join(__dirname, 'public')));
+const adminAuthRoutes = require('./routes/adminAuth');
+const setup = require('./routes/setup');
+const { requireAdminAuth } = require('./services/adminAuth');
+const publicDir = require('path').join(__dirname, 'public');
+app.use('/admin/ui', express.static(publicDir, { index: 'admin.html' }));
 const form = require('./routes/form');
 const record = require('./routes/record');
 const viewer = require('./routes/viewer');
 
-app.use('/admin', admin);
+app.use('/setup', setup);
+app.use('/admin/auth', adminAuthRoutes);
+app.use('/admin', requireAdminAuth, admin);
 app.use('/:tenant/:app/form', form);
 app.use('/:tenant/:app/record', record);
 app.use('/:tenant/:app/viewer', viewer);
